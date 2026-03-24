@@ -18,6 +18,7 @@ if __name__ == "__main__":
         historico.append((linha, resultado))
         tokensList.append(tokens)
         
+
     Analisador.exportarTokens(tokensList, "tokens.txt")
 
     print("Histórico de Expressões e Resultados:")

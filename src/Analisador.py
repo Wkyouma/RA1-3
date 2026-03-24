@@ -7,6 +7,7 @@ def parseExpressao(linha):
     tokens = []
     acum = ""
 
+
     for char in linha:
         if char.isalnum() or char == '.':
             acum += char
@@ -51,11 +52,7 @@ def estado_operador(tokens, char):
 def estado_parenteses(tokens, char):
     tokens.append(char)
 
-#exportar tokens para txt
-def exportarTokens(tokens, nomeArquivo):
-    with open(nomeArquivo, "w") as arquivo:
-        for linha in tokens:
-            arquivo.write(str(linha) + "\n")
+
 
 # Executar expressão usando uma pilha, considerando variáveis, histórico e operações
 def executarExpressao(tokens, memoria, historico):
@@ -64,7 +61,15 @@ def executarExpressao(tokens, memoria, historico):
 
     inner = [t for t in tokens if t not in ['(', ')']]
     ops = {'+', '-', '*', '/', '//', '%', '^'}
-    alvo = inner[-1] if (inner and inner[-1][0].isalpha() and inner[-1] != 'RES' and not any(t in ops for t in inner)) else None
+    if inner and inner[-1][0].isalpha() and inner[-1] != 'RES' and not any(t in ops for t in inner):
+        if len(inner) == 2:
+            alvo = inner[-1]   
+        elif len(inner) == 1:
+            alvo = None        
+        else:
+            return "Operação inválida" 
+    else:
+        alvo = None
 
     try:
         for token in tokens:
@@ -113,7 +118,13 @@ def executarExpressao(tokens, memoria, historico):
     except Exception:
         return "Erro na execução"
 
-# Ler arquivo e retornar linhas não vazias
+# Ler arquivo 
 def lerArquivo(arquivo):
     with open(arquivo, 'r', encoding='utf-8') as f:
         return [linha.strip() for linha in f if linha.strip()]
+
+#exportar tokens para txt
+def exportarTokens(tokens, nomeArquivo):
+    with open(nomeArquivo, "w") as arquivo:
+        for linha in tokens:
+            arquivo.write(str(linha) + "\n")
