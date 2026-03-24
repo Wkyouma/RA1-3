@@ -22,6 +22,8 @@ def parseExpressao(linha):
 
         if char.isspace():
             continue
+        elif char == '-' and not tokens or char == '-' and tokens[-1] in ['(', '+', '-', '*', '/', '//', '%', '^']:
+            acum += char
         elif char in ['+', '-', '*', '/', '%', '^']:
             estado_operador(tokens, char)
         elif char in ['(', ')']:
@@ -76,7 +78,7 @@ def executarExpressao(tokens, memoria, historico):
             if token in ['(', ')']:
                 continue
 
-            if token.replace('.', '', 1).isdigit():
+            if token.lstrip('-').replace('.', '', 1).isdigit():
                 pilha.append(float(token))
             
             elif token == 'RES':
