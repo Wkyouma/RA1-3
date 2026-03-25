@@ -56,7 +56,10 @@ def estado_numero(tokens, valor):
     tokens.append(valor)
 
 def estado_identificador(tokens, nome):
-    tokens.append(nome.upper())
+    if not nome.isupper():
+        tokens.append('ERRO')
+        return
+    tokens.append(nome)
 
 def estado_operador(tokens, char):
     if char == '/' and tokens and tokens[-1] == '/':
@@ -122,7 +125,9 @@ def executarExpressao(tokens, memoria, historico):
                 elif token == '%': pilha.append(a % b)
                 elif token == '^': pilha.append(a ** int(abs(b)))
 
-        if pilha: 
+        if len(pilha) > 1:
+            return "OPERAÇÃO INVÁLIDA"
+        elif pilha:
             return pilha[-1]
         else:
             return "EXPRESSAO VAZIA"
