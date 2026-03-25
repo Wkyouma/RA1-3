@@ -13,33 +13,46 @@ def parseExpressao(linha):
             acum += char
             continue
 
-        if acum:
-            if acum[0].isalpha():
-                estado_identificador(tokens, acum)
-            else:
-                estado_numero(tokens, acum)
-            acum = ""
-
-        if char.isspace():
+        if char == '-' and (not tokens or tokens[-1] in ['(', '+', '-', '*', '/', '//', '%', '^']):
+            estado_inicial(tokens, '', acum)
+            acum = char
             continue
-        elif char == '-' and not tokens or char == '-' and tokens[-1] in ['(', '+', '-', '*', '/', '//', '%', '^']:
-            acum += char
-        elif char in ['+', '-', '*', '/', '%', '^']:
-            estado_operador(tokens, char)
-        elif char in ['(', ')']:
-            estado_parenteses(tokens, char)
-        else:
-            return None 
 
+        if not char.isspace() and char not in ['+', '-', '*', '/', '%', '^', '(', ')']:
+            return 'INVALIDO'
+
+        estado_inicial(tokens, char, acum)
+        if 'ERRO' in tokens:  
+            return 'INVALIDO'
+        acum = ""
+
+    estado_inicial(tokens, '', acum)
+    if 'ERRO' in tokens:     
+        return 'INVALIDO'
+    
+    if tokens.count('(') != tokens.count(')'):#verificar se os parenteses estão balanceados
+        return 'INVALIDO'
+    return tokens
+
+# Estados ADF para processar números, identificadores, operadores e parênteses
+
+def estado_inicial(tokens, char, acum):
     if acum:
         if acum[0].isalpha():
             estado_identificador(tokens, acum)
         else:
             estado_numero(tokens, acum)
-    return tokens
+    if char.isspace():
+        return
+    elif char in ['+', '-', '*', '/', '%', '^']:
+        estado_operador(tokens, char)
+    elif char in ['(', ')']:
+        estado_parenteses(tokens, char)
 
-# Estados ADF para processar números, identificadores, operadores e parênteses
 def estado_numero(tokens, valor):
+    if valor.count('.') > 1:
+        tokens.append('ERRO')
+        return
     tokens.append(valor)
 
 def estado_identificador(tokens, nome):
@@ -69,7 +82,7 @@ def executarExpressao(tokens, memoria, historico):
         elif len(inner) == 1:
             alvo = None        
         else:
-            return "Operação inválida" 
+            return "OPERAÇÃO INVÁLIDA" 
     else:
         alvo = None
 
@@ -112,13 +125,13 @@ def executarExpressao(tokens, memoria, historico):
         if pilha: 
             return pilha[-1]
         else:
-            return "Expressão vazia"
+            return "EXPRESSAO VAZIA"
     except IndexError:
-        return "Operação inválida"
+        return "OPERAÇÃO INVÁLIDA"
     except ZeroDivisionError:
-        return "Divisão por zero"
+        return "DIVISAO POR ZERO"
     except Exception:
-        return "Erro na execução"
+        return "ERRO"
 
 # Ler arquivo 
 def lerArquivo(arquivo):
@@ -130,3 +143,6 @@ def exportarTokens(tokens, nomeArquivo):
     with open(nomeArquivo, "w") as arquivo:
         for linha in tokens:
             arquivo.write(str(linha) + "\n")
+
+
+#falta função de teste de expressoes

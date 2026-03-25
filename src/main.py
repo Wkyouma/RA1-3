@@ -1,6 +1,6 @@
 import Analisador
 import sys
-
+#falta montar o main
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Uso: python main.py <arquivo.txt>")
@@ -24,3 +24,5 @@ if __name__ == "__main__":
     print("Histórico de Expressões e Resultados:")
     print(historico)
     print('Memoria:' ,memoria)
+
+ 
