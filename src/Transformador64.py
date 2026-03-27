@@ -24,7 +24,10 @@ def generateAssembly(tokens, assemblyCode):
     ]
 
     data = [
-        ".section .data"
+        ".section .data",   
+        "const_1: .double 1.0", # Constante 1.0 para multiplicação inicial  
+        "history: .space 800", # Espaço para 100 respostas (8 bytes cada)
+        "history_ptr: .word 0" # Ponteiro para o histórico,
     ]
 
     usedVariables = []
@@ -35,24 +38,20 @@ def generateAssembly(tokens, assemblyCode):
         "_start:"
     ]
 
-    header.append("\n    /* PAINEL */")
-    header.append(f"    ldr r1, =HEX0")
-    header.append(f"    mov r0, #{tablePanel['0']}")
-    header.append(f"    str r0, [r1]")
     
     for i, token in enumerate(tokens):
         match token:
-            case token if token.replace('.', '', 1).isdigit(): # Remove simbolo de dígito
+            case token if token.replace('.', '', 1).lstrip('-').isdigit(): # Permite negativos e decimais
                 data.append(f"   val{i}: .double {token}")
                 text.append(f"   ldr r0, =val{i}")
                 text.append(f"   vldr d0, [r0]")
                 text.append("    vpush {d0}")
             case '(': # Pra saber onde abre.
+                text.append(f"    /* Início de expressão {depth} */")
                 depth += 1
-                text.append("    /* Início de expressão */")
             case ')': # E onde fecha. Usar para saber quando termina a operação e guardar o resultado no d0. (talvez converta pra 32 aqui mesmo)
                 depth -= 1
-                text.append("    /* Fim de expressão */")
+                text.append(f"    /* Fim de expressão {depth} */")  
                 if depth == 0:
                     text.append("    vpop {d0} /* Resultado final da expressão */")
 
@@ -97,7 +96,6 @@ def generateAssembly(tokens, assemblyCode):
                 text.append("    vpop {d0}") # A (Base)
                 text.append("    vcvt.s32.f64 s1, d1") # Converte B para inteiro
                 text.append("    vmov r1, s1")         # Move B para R1 (Contador do loop)
-                data.append(f"   const_1: .double 1.0") # Constante 1.0 para multiplicação inicial
                 text.append("    ldr r0, =const_1")    # Carrega 1.0
                 text.append("    vldr d2, [r0]")       # d2 = 1.0 (Resultado inicial)
                 text.append(f"loop_pot_{i}:")          # Rótulo único usando o índice do token
@@ -114,12 +112,12 @@ def generateAssembly(tokens, assemblyCode):
                 text.append("    vpop {d0}")                   # Pega 'N' da pilha
                 text.append("    vcvt.s32.f64 s0, d0")         # Converte N para inteiro
                 text.append("    vmov r1, s0")                 
-                text.append("    ldr r2, =ponteiro_hist")
+                text.append("    ldr r2, =history_ptr")        # Pega o ponteiro do histórico
                 text.append("    ldr r3, [r2]")                # r3 = Posição atual do histórico
                 text.append("    mov r4, #8")                  
                 text.append("    mul r1, r1, r4")              # N * 8 bytes
                 text.append("    sub r3, r3, r1")              # Volta N casas no histórico
-                text.append("    ldr r5, =historico")
+                text.append("    ldr r5, =history")            # Pega o início do histórico
                 text.append("    add r5, r5, r3")              # Encontra o endereço exato
                 text.append("    vldr d1, [r5]")               # Carrega a resposta antiga
                 text.append("    vpush {d1}")
@@ -127,7 +125,7 @@ def generateAssembly(tokens, assemblyCode):
             case _: # Qualquer outro token, quero pegar nomes de variaveis ().
                 var = token
 
-                stored = (tokens[i-1] == '(') or (tokens[i-1] == ')')  # Se o token anterior for ( ou )
+                stored = (tokens[i-1] != '(')  # Se o token anterior for ( ou )
 
                 if var not in usedVariables:
                     data.append(f"   {var}: .double 0.0")
@@ -136,7 +134,7 @@ def generateAssembly(tokens, assemblyCode):
                 if not stored:
                     text.append(f"    /* SALVANDO VARIÁVEL: {var} */")
                     text.append("    vpop {d0}")                 # Pega o valor calculado
-                    text.append(f"   ldr r0, ={var}")       # Pega endereço da variável
+                    text.append(f"   ldr r0, ={var}")            # Pega endereço da variável
                     text.append("    vstr d0, [r0]")             # Grava na memória RAM
                     text.append("    vpush {d0}")                # Mantém na pilha caso a conta continue
                 else:
@@ -153,7 +151,7 @@ def generateAssembly(tokens, assemblyCode):
 if __name__ == "__main__":
     import ast # Não faz nenhuma operação matemática, só converte o formato de string para lista mesmo.
     
-    save = False # Mudar para True para salvar em arquivo .s ao invés de imprimir no terminal
+    save = True # Mudar para True para salvar em arquivo .s ao invés de imprimir no terminal
     tokens = []
     assemblyCode = ""
 
