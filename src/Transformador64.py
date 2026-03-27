@@ -136,23 +136,24 @@ def generateAssembly(tokens, assemblyCode):
                 if not stored:
                     text.append(f"    /* SALVANDO VARIÁVEL: {var} */")
                     text.append("    vpop {d0}")                 # Pega o valor calculado
-                    text.append(f"   ldr r0, =var_{var}")       # Pega endereço da variável
+                    text.append(f"   ldr r0, ={var}")       # Pega endereço da variável
                     text.append("    vstr d0, [r0]")             # Grava na memória RAM
                     text.append("    vpush {d0}")                # Mantém na pilha caso a conta continue
                 else:
                     text.append(f"    /* LENDO VARIÁVEL: {var} */")
-                    text.append(f"   ldr r0, =var_{var}")
+                    text.append(f"   ldr r0, ={var}")
                     text.append("    vldr d0, [r0]")             # Puxa o valor da memória RAM
                     text.append("    vpush {d0}")                # Joga na pilha FPU para o cálculo
 
-        text.append("\nfim:")
-        text.append("    b fim")
+    text.append("\nfim:")
+    text.append("    b fim")
 
     return "\n".join(header + data + text)
 
 if __name__ == "__main__":
-
-    save = True
+    import ast # Não faz nenhuma operação matemática, só converte o formato de string para lista mesmo.
+    
+    save = False # Mudar para True para salvar em arquivo .s ao invés de imprimir no terminal
     tokens = []
     assemblyCode = ""
 
@@ -162,12 +163,12 @@ if __name__ == "__main__":
 
     for line in tokenFile:
         if line.strip() != "INVALIDO" and line.strip() != "":
-            
-            tokens.append(line.strip()) 
+            tokenList = ast.literal_eval(line.strip()) # Converte a string para uma lista de tokens
 
-    for token in tokens:
-        # print(token)
-        assemblyCode = generateAssembly(tokens, assemblyCode)
+            tokens.extend(tokenList)
+            # print(tokenList)
+
+    assemblyCode = generateAssembly(tokens, assemblyCode)
 
     if save:
         fileName = "output.s"
