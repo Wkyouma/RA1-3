@@ -56,6 +56,9 @@ def estado_numero(tokens, valor):
     tokens.append(valor)
 
 def estado_identificador(tokens, nome):
+    if not nome.isupper():
+        tokens.append('ERRO')
+        return
     tokens.append(nome)
 
 def estado_operador(tokens, char):
