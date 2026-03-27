@@ -15,6 +15,8 @@ tablePanel = {
 
 def generateAssembly(tokens, assemblyCode):
 
+    depth = 0
+
     header = [
         ".global _start",
         ".equ HEX0, 0xFF200020",
@@ -24,7 +26,10 @@ def generateAssembly(tokens, assemblyCode):
     data = [
         ".section .data"
     ]
-    
+
+    usedVariables = []
+
+
     text = [
         ".section .text",
         "_start:"
@@ -42,10 +47,15 @@ def generateAssembly(tokens, assemblyCode):
                 text.append(f"   ldr r0, =val{i}")
                 text.append(f"   vldr d0, [r0]")
                 text.append("    vpush {d0}")
-            case '(': # Só pra saber onde abre.
+            case '(': # Pra saber onde abre.
+                depth += 1
                 text.append("    /* Início de expressão */")
-            case ')': # E onde fecha.
+            case ')': # E onde fecha. Usar para saber quando termina a operação e guardar o resultado no d0. (talvez converta pra 32 aqui mesmo)
+                depth -= 1
                 text.append("    /* Fim de expressão */")
+                if depth == 0:
+                    text.append("    vpop {d0} /* Resultado final da expressão */")
+
             case '+': # Adição
                 text.append("    vpop {d1}")
                 text.append("    vpop {d0}")
@@ -97,33 +107,52 @@ def generateAssembly(tokens, assemblyCode):
                 text.append("    sub r1, r1, #1")      # Diminui 1 do contador
                 text.append(f"   b loop_pot_{i}")      # Repete
                 text.append(f"fim_pot_{i}:")
-                text.append("    vpush {d2}")          # Guarda o resultado
-            case 'RES': # Volta 2 ultimos passos
-                text.append("    vpop {d1}")
-                text.append("    vpop {d0}")
-                text.append("    vpush {d0}")
+                text.append("    vpush {d2}")
+
+            case 'RES':
+                text.append("    /* COMANDO RES */")
+                text.append("    vpop {d0}")                   # Pega 'N' da pilha
+                text.append("    vcvt.s32.f64 s0, d0")         # Converte N para inteiro
+                text.append("    vmov r1, s0")                 
+                text.append("    ldr r2, =ponteiro_hist")
+                text.append("    ldr r3, [r2]")                # r3 = Posição atual do histórico
+                text.append("    mov r4, #8")                  
+                text.append("    mul r1, r1, r4")              # N * 8 bytes
+                text.append("    sub r3, r3, r1")              # Volta N casas no histórico
+                text.append("    ldr r5, =historico")
+                text.append("    add r5, r5, r3")              # Encontra o endereço exato
+                text.append("    vldr d1, [r5]")               # Carrega a resposta antiga
                 text.append("    vpush {d1}")
-            case 'V_MEM': # Salva na memória
-                text.append("    vpop {d0}")
-                data.append(f"   mem{i}: .double 0.0")
-                text.append(f"    ldr r0, =mem{i}")
-                text.append("    vstr d0, [r0]")
-                text.append("    vpush {d0}")
-            case 'MEM': # Pega da memória
-                text.append("    vpop {d0}")
-                data.append(f"   mem{i}: .double ")
-                text.append(f"    ldr r0, =mem{i}")
-                text.append("    vldr d0, [r0]")    
-                text.append("    vpush {d0}")
-                
-    text.append("\nfim:")
-    text.append("    b fim")
+            
+            case _: # Qualquer outro token, quero pegar nomes de variaveis ().
+                var = token
+
+                stored = (tokens[i-1] == '(') or (tokens[i-1] == ')')  # Se o token anterior for ( ou )
+
+                if var not in usedVariables:
+                    data.append(f"   {var}: .double 0.0")
+                    usedVariables.append(var)
+
+                if not stored:
+                    text.append(f"    /* SALVANDO VARIÁVEL: {var} */")
+                    text.append("    vpop {d0}")                 # Pega o valor calculado
+                    text.append(f"   ldr r0, =var_{var}")       # Pega endereço da variável
+                    text.append("    vstr d0, [r0]")             # Grava na memória RAM
+                    text.append("    vpush {d0}")                # Mantém na pilha caso a conta continue
+                else:
+                    text.append(f"    /* LENDO VARIÁVEL: {var} */")
+                    text.append(f"   ldr r0, =var_{var}")
+                    text.append("    vldr d0, [r0]")             # Puxa o valor da memória RAM
+                    text.append("    vpush {d0}")                # Joga na pilha FPU para o cálculo
+
+        text.append("\nfim:")
+        text.append("    b fim")
 
     return "\n".join(header + data + text)
 
 if __name__ == "__main__":
 
-    save = False
+    save = True
     tokens = []
     assemblyCode = ""
 
@@ -131,19 +160,18 @@ if __name__ == "__main__":
         tokenFile = file.read().splitlines()
         # print(tokens)
 
-    if tokenFile:
-        for token in tokenFile:
-            if token.strip() != "INVALIDO":
-                tokens.append(token)
+    for line in tokenFile:
+        if line.strip() != "INVALIDO" and line.strip() != "":
+            
+            tokens.append(line.strip()) 
 
-    
     for token in tokens:
         # print(token)
         assemblyCode = generateAssembly(tokens, assemblyCode)
-    print(assemblyCode)
-
 
     if save:
         fileName = "output.s"
         with open(fileName, "w") as file:
             file.write(assemblyCode)
+    else:
+        print(assemblyCode)
