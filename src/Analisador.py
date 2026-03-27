@@ -56,9 +56,6 @@ def estado_numero(tokens, valor):
     tokens.append(valor)
 
 def estado_identificador(tokens, nome):
-    if not nome.isupper():
-        tokens.append('ERRO')
-        return
     tokens.append(nome)
 
 def estado_operador(tokens, char):
@@ -125,9 +122,7 @@ def executarExpressao(tokens, memoria, historico):
                 elif token == '%': pilha.append(a % b)
                 elif token == '^': pilha.append(a ** int(abs(b)))
 
-        if len(pilha) > 1:
-            return "OPERAÇÃO INVÁLIDA"
-        elif pilha:
+        if pilha: 
             return pilha[-1]
         else:
             return "EXPRESSAO VAZIA"
@@ -150,4 +145,22 @@ def exportarTokens(tokens, nomeArquivo):
             arquivo.write(str(linha) + "\n")
 
 
-#falta função de teste de expressoes
+def funcaoTeste():
+    memoria = {}   
+    historico = []  
+    
+    linhas = ['(15 5 +)',
+              '(20 Asa)',
+              '(29 1 +)',
+              '(29 10 +)',
+              '((20 10 +) 20 +)',
+              '(Asa 20 +)',
+              '((2 RES) 1 -)',
+              '(1 2 v)']
+
+    for linha in linhas:
+        tokens = parseExpressao(linha)
+        resultado = executarExpressao(tokens, memoria, historico)
+        historico.append((linha, resultado))
+        print(f"Expressão: {linha} -> Tokens: {tokens} -> Resultado: {resultado}")
+
