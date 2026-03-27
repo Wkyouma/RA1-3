@@ -78,14 +78,11 @@ def executarExpressao(tokens, memoria, historico):
     pilha = []
 
     inner = [t for t in tokens if t not in ['(', ')']]
-    ops = {'+', '-', '*', '/', '//', '%', '^'}
-    if inner and inner[-1][0].isalpha() and inner[-1] != 'RES' and not any(t in ops for t in inner):
-        if len(inner) == 2:
-            alvo = inner[-1]   
-        elif len(inner) == 1:
-            alvo = None        
+    if inner and inner[-1][0].isalpha() and inner[-1] != 'RES':
+        if len(inner) >= 2:
+            alvo = inner[-1]
         else:
-            return "OPERAÇÃO INVÁLIDA" 
+            alvo = None
     else:
         alvo = None
 
