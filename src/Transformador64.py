@@ -5,17 +5,16 @@ def generateAssembly(tokens, assemblyCode):
 
     header = [
         ".global _start",
-        ".equ HEX0, 0xFF200020", 
-        
     ]
 
     data = [
         ".section .data",
-        "   TABELA_HEX: .byte 0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F", # Tabela de mapeamento dos dígitos de 0 a 9 do painel
         "   const_1: .double 1.0", # Constante 1.0 para multiplicação inicial  
         "   const_10: .double 10.0", # Usado no painel de 7 segmentos
         "   history: .space 800", # Espaço para 100 respostas (8 bytes cada)
-        "   history_ptr: .word 0" # Ponteiro para o histórico,
+        "   history_ptr: .word 0", # Ponteiro para o histórico,
+        "   TABELA_HEX: .byte 0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F", # Tabela de mapeamento dos dígitos de 0 a 9 do painel
+        "   .balign 8" # Alinha a proxima variavel, evita problemas de acesso errado a variaveis .double (64 bits)
     ]
 
     usedVariables = []
@@ -41,7 +40,16 @@ def generateAssembly(tokens, assemblyCode):
                 depth -= 1
                 text.append(f"    /* Fim de expressão {depth} */")  
                 if depth == 0:
-                    text.append("    vpop {d0} /* Resultado final da expressão */")
+                    text.append("    /* Salva no histórico */")
+                    text.append("    vpop {d0}")                 
+                    text.append("    ldr r2, =history_ptr")
+                    text.append("    ldr r3, [r2]")
+                    text.append("    ldr r5, =history")
+                    text.append("    add r5, r5, r3")
+                    text.append("    vstr d0, [r5]")             
+                    text.append("    add r3, r3, #8")            
+                    text.append("    str r3, [r2]")
+                    text.append("    vpush {d0}")
 
             case '+': # Adição
                 text.append("    vpop {d1}")
@@ -119,7 +127,7 @@ def generateAssembly(tokens, assemblyCode):
                     data.append(f"   {var}: .double 0.0")
                     usedVariables.append(var)
 
-                if not stored:
+                if stored:
                     text.append(f"    /* SALVANDO VARIÁVEL: {var} */")
                     text.append("    vpop {d0}")                 # Pega o valor calculado
                     text.append(f"   ldr r0, ={var}")            # Pega endereço da variável
