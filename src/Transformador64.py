@@ -1,33 +1,21 @@
 
-
-tablePanel = {
-    "0": "3F",
-    "1": "06",
-    "2": "5B",
-    "3": "4F",
-    "4": "66",
-    "5": "6D",
-    "6": "7D",
-    "7": "07",
-    "8": "7F",
-    "9": "6F"
-} # Tabela de mapeamento dos dígitos de 0 a 9 do painel (temporário?)
-
 def generateAssembly(tokens, assemblyCode):
 
     depth = 0
 
     header = [
         ".global _start",
-        ".equ HEX0, 0xFF200020",
+        ".equ HEX0, 0xFF200020", 
         
     ]
 
     data = [
-        ".section .data",   
-        "const_1: .double 1.0", # Constante 1.0 para multiplicação inicial  
-        "history: .space 800", # Espaço para 100 respostas (8 bytes cada)
-        "history_ptr: .word 0" # Ponteiro para o histórico,
+        ".section .data",
+        "   TABELA_HEX: .byte 0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F", # Tabela de mapeamento dos dígitos de 0 a 9 do painel
+        "   const_1: .double 1.0", # Constante 1.0 para multiplicação inicial  
+        "   const_10: .double 10.0", # Usado no painel de 7 segmentos
+        "   history: .space 800", # Espaço para 100 respostas (8 bytes cada)
+        "   history_ptr: .word 0" # Ponteiro para o histórico,
     ]
 
     usedVariables = []
@@ -142,6 +130,33 @@ def generateAssembly(tokens, assemblyCode):
                     text.append(f"   ldr r0, ={var}")
                     text.append("    vldr d0, [r0]")             # Puxa o valor da memória RAM
                     text.append("    vpush {d0}")                # Joga na pilha FPU para o cálculo
+
+
+# Lógica do Painel (Usando _ como separador decimal)
+    text.append("    /* --- PAINEL 7 --- */")
+    text.append("    vpop {d0}")                # Pega o ultimo resultado calculado
+    text.append("    vcvt.s32.f64 s0, d0")      # Converte para int (trunca)
+    text.append("    vmov r2, s0")              # R2 = Parte inteira
+    text.append("    vcvt.f64.s32 d1, s0")      # Converte de volta pra float
+    text.append("    vsub.f64 d2, d0, d1")      # Isola a fracao (Ex: 1.2 - 1.0 = 0.2)
+    text.append("    ldr r0, =const_10")        # Carrega 10.0
+    text.append("    vldr d3, [r0]")
+    text.append("    vmul.f64 d2, d2, d3")      # Multiplica fracao por 10
+    text.append("    vcvt.s32.f64 s1, d2")
+    text.append("    vmov r3, s1")              # R3 = Parte decimal
+    
+    text.append("    LDR R4, =TABELA_HEX")
+    text.append("    LDRB R5, [R4, r3]")        # Desenho do Decimal (HEX0)
+    text.append("    MOV R6, #0x08")            # Desenho do '_' (HEX1)
+    text.append("    LDRB R7, [R4, r2]")        # Desenho do Inteiro (HEX2)
+    
+    text.append("    LSL R6, R6, #8")           # Move o _ para HEX1
+    text.append("    ORR R5, R5, R6")           # Junta HEX0 e HEX1
+    text.append("    LSL R7, R7, #16")          # Move o Inteiro para HEX2
+    text.append("    ORR R5, R5, R7")           # Junta tudo no R5
+    
+    text.append("    LDR R8, =0xFF200020")      # Endereço base do painel
+    text.append("    STR R5, [R8]")             # Acende os displays!
 
     text.append("\nfim:")
     text.append("    b fim")
