@@ -1,6 +1,7 @@
 import Analisador
+
 import sys
-#falta montar o main
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Uso: python main.py <arquivo.txt>")
@@ -9,20 +10,21 @@ if __name__ == "__main__":
     arquivo = sys.argv[1]
     linhas = Analisador.lerArquivo(arquivo)
     tokensList = []
-    memoria = {}   
-    historico = []  
+    memoria = {}
+    historico = []
 
     for linha in linhas:
         tokens = Analisador.parseExpressao(linha)
         resultado = Analisador.executarExpressao(tokens, memoria, historico)
-        historico.append((linha, resultado))
+        if isinstance(resultado, (int, float)):
+            historico.append((linha, resultado))
         tokensList.append(tokens)
-        
 
     Analisador.exportarTokens(tokensList, "tokens.txt")
 
     print("Histórico de Expressões e Resultados:")
     print(historico)
-    print('Memoria:' ,memoria)
+    print('Memoria:', memoria)
+
 
  
