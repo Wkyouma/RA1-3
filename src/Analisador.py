@@ -74,7 +74,7 @@ def estado_parenteses(tokens, char):
 
 # Executar expressão usando uma pilha, considerando variáveis, histórico e operações
 def executarExpressao(tokens, memoria, historico):
-    if not isinstance(tokens, list): return "ERRO LÉXICO"
+    if tokens is None: return "ERRO LÉXICO"
     pilha = []
 
     inner = [t for t in tokens if t not in ['(', ')']]
