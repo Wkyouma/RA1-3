@@ -77,10 +77,9 @@ Exemplos:
 
 ```
 RA1-3/
-├── data/
-│   ├── teste1.txt        # Operações básicas, variável com letra minúscula (INVALIDO) e token inválido
-│   ├── teste2.txt        # Operações variadas: aninhamento, RES, variável TOTAL, módulo
-│   └── teste3.txt        # Mix de inteiros e decimais, variável VEA
+├── teste1.txt            # Operações básicas, variável com letra minúscula (INVALIDO) e token inválido
+├── teste2.txt            # Operações variadas: aninhamento, RES, variável TOTAL, módulo
+├── teste3.txt            # Mix de inteiros e decimais, variável VEA
 └── src/
     ├── main.py            # Ponto de entrada: executa todo o pipeline
     ├── Analisador.py      # Analisador léxico (ADF) e executor de expressões
@@ -99,13 +98,13 @@ Execute a partir da pasta `src/`:
 
 ```bash
 cd src
-python main.py ../data/teste1.txt
+python main.py ../teste1.txt
 ```
 
 Ou a partir da raiz do projeto:
 
 ```bash
-python src/main.py data/teste1.txt
+python src/main.py teste1.txt
 ```
 
 O comando realiza as seguintes etapas automaticamente:
@@ -136,7 +135,7 @@ python src/Transformador64.py src/tokens.txt
 
 ## Arquivos de Teste
 
-### `data/teste1.txt`
+### `teste1.txt`
 
 ```
 (15 5 +)          → 20.0
@@ -149,7 +148,7 @@ python src/Transformador64.py src/tokens.txt
 (1 2 v)           → INVALIDO  (token 'v' inválido)
 ```
 
-### `data/teste2.txt`
+### `teste2.txt`
 
 ```
 (2 3 + 4 5 * +)           → 25.0
@@ -164,7 +163,7 @@ python src/Transformador64.py src/tokens.txt
 ((2 2 +) (2 2 *) (2 2 ^) + +) → 12.0
 ```
 
-### `data/teste3.txt`
+### `teste3.txt`
 
 ```
 (10 5 +)            → 15.0
