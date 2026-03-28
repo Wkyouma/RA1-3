@@ -1,6 +1,7 @@
 import Analisador
 import sys
-#falta montar o main
+import Transformador64 as t64
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Uso: python main.py <arquivo.txt>")
@@ -18,8 +19,13 @@ if __name__ == "__main__":
         historico.append((linha, resultado))
         tokensList.append(tokens)
         
-
     Analisador.exportarTokens(tokensList, "tokens.txt")
+
+    tokens = t64.readFile("tokens.txt")
+    assemblyCode = t64.generateAssembly(tokens, "")
+    with open("output.s", "w") as f:
+        f.write(assemblyCode)
+    print("Assembly gerado em output.s")
 
     print("Histórico de Expressões e Resultados:")
     print(historico)
