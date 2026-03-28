@@ -1,3 +1,5 @@
+import sys 
+import ast  # Não faz nenhuma operação matemática, só converte o formato de string para lista mesmo.
 
 def generateAssembly(tokens, assemblyCode):
 
@@ -17,6 +19,36 @@ def generateAssembly(tokens, assemblyCode):
         "   .balign 8" # Alinha a proxima variavel, evita problemas de acesso errado a variaveis .double (64 bits)
     ]
 
+    panel7 = [
+        "    vpop {d0}",                  # Pega o resultado para exibir
+        "    vpush {d0}",                 # Devolve para a pilha para não perder o valor
+        "    vabs.f64 d0, d0",            # Garante valor positivo para o índice da tabela
+        "    vcvt.s32.f64 s0, d0",        # Converte float para inteiro (trunca)
+        "    vmov r2, s0",                # r2 = Parte Inteira
+        "    vcvt.f64.s32 d1, s0",        # Converte inteiro de volta para float
+        "    vsub.f64 d2, d0, d1",        # Subtrai para isolar a fração (ex: 0.2)
+        "    ldr r0, =const_10",          # Busca constante 10.0 no .data
+        "    vldr d3, [r0]",
+        "    vmul.f64 d2, d2, d3",        # d2 = fração * 10
+        "    vcvt.s32.f64 s1, d2",        # Converte fração para inteiro
+        "    vmov r3, s1",                # r3 = Parte Decimal
+        "    cmp r2, #9",                 # Trava o dígito inteiro em 9 se for maior
+        "    movgt r2, #9",
+        "    cmp r3, #9",                 # Trava o dígito decimal em 9 se for maior
+        "    movgt r3, #9",
+        "    LDR R4, =TABELA_HEX",        # Carrega o endereço da tabela de segmentos
+        "    LDRB R5, [R4, r3]",          # r5 = Bits do Decimal (HEX0)
+        "    LDRB R7, [R4, r2]",          # r7 = Bits do Inteiro (HEX2)
+        "    MOV R6, #0x08",              # r6 = Desenho do '_' (HEX1)
+        "    AND R5, R5, #0xFF",          # Limpa o registrador r5
+        "    LSL R6, R6, #8",             # Move o '_' para a posição do HEX1
+        "    ORR R5, R5, R6",             # Junta HEX0 e HEX1
+        "    LSL R7, R7, #16",            # Move o Inteiro para a posição do HEX2
+        "    ORR R5, R5, R7",             # Finaliza a montagem do registrador em r5
+        "    LDR R8, =0xFF200020",        # Endereço do painel HEX no DE1-SoC
+        "    STR R5, [R8]"                # Acende os displays
+    ]
+
     usedVariables = []
 
 
@@ -34,11 +66,11 @@ def generateAssembly(tokens, assemblyCode):
                 text.append(f"   vldr d0, [r0]")
                 text.append("    vpush {d0}")
             case '(': # Pra saber onde abre.
-                text.append(f"    /* Início de expressão {depth} */")
+                text.append(f"    /* Início de expressão -- {depth} -- */")
                 depth += 1
-            case ')': # E onde fecha. Usar para saber quando termina a operação e guardar o resultado no d0. (talvez converta pra 32 aqui mesmo)
+            case ')': # E onde fecha. Usar para saber quando termina a operação e guardar o resultado no d0.
                 depth -= 1
-                text.append(f"    /* Fim de expressão {depth} */")  
+                text.append(f"    /* Fim de expressão -- {depth} -- */")  
                 if depth == 0:
                     text.append("    /* Salva no histórico */")
                     text.append("    vpop {d0}")                 
@@ -50,6 +82,8 @@ def generateAssembly(tokens, assemblyCode):
                     text.append("    add r3, r3, #8")            
                     text.append("    str r3, [r2]")
                     text.append("    vpush {d0}")
+                    text.extend(panel7) # Atualiza o painel a cada resultado final
+                
 
             case '+': # Adição
                 text.append("    vpop {d1}")
@@ -139,46 +173,16 @@ def generateAssembly(tokens, assemblyCode):
                     text.append("    vldr d0, [r0]")             # Puxa o valor da memória RAM
                     text.append("    vpush {d0}")                # Joga na pilha FPU para o cálculo
 
-
-# Lógica do Painel (Usando _ como separador decimal)
-    text.append("    /* --- PAINEL 7 --- */")
-    text.append("    vpop {d0}")                # Pega o ultimo resultado calculado
-    text.append("    vcvt.s32.f64 s0, d0")      # Converte para int (trunca)
-    text.append("    vmov r2, s0")              # R2 = Parte inteira
-    text.append("    vcvt.f64.s32 d1, s0")      # Converte de volta pra float
-    text.append("    vsub.f64 d2, d0, d1")      # Isola a fracao (Ex: 1.2 - 1.0 = 0.2)
-    text.append("    ldr r0, =const_10")        # Carrega 10.0
-    text.append("    vldr d3, [r0]")
-    text.append("    vmul.f64 d2, d2, d3")      # Multiplica fracao por 10
-    text.append("    vcvt.s32.f64 s1, d2")
-    text.append("    vmov r3, s1")              # R3 = Parte decimal
-    
-    text.append("    LDR R4, =TABELA_HEX")
-    text.append("    LDRB R5, [R4, r3]")        # Desenho do Decimal (HEX0)
-    text.append("    MOV R6, #0x08")            # Desenho do '_' (HEX1)
-    text.append("    LDRB R7, [R4, r2]")        # Desenho do Inteiro (HEX2)
-    
-    text.append("    LSL R6, R6, #8")           # Move o _ para HEX1
-    text.append("    ORR R5, R5, R6")           # Junta HEX0 e HEX1
-    text.append("    LSL R7, R7, #16")          # Move o Inteiro para HEX2
-    text.append("    ORR R5, R5, R7")           # Junta tudo no R5
-    
-    text.append("    LDR R8, =0xFF200020")      # Endereço base do painel
-    text.append("    STR R5, [R8]")             # Acende os displays!
-
     text.append("\nfim:")
     text.append("    b fim")
 
     return "\n".join(header + data + text)
 
-if __name__ == "__main__":
-    import ast # Não faz nenhuma operação matemática, só converte o formato de string para lista mesmo.
-    
-    save = True # Mudar para True para salvar em arquivo .s ao invés de imprimir no terminal
-    tokens = []
-    assemblyCode = ""
 
-    with open("./tokens.txt", "r") as file:
+def readFile(fileName):
+    tokens = []
+
+    with open(fileName, "r") as file:
         tokenFile = file.read().splitlines()
         # print(tokens)
 
@@ -188,6 +192,13 @@ if __name__ == "__main__":
 
             tokens.extend(tokenList)
             # print(tokenList)
+    return tokens
+
+if __name__ == "__main__":
+    save = True # Mudar para True para salvar em arquivo .s ao invés de imprimir no terminal
+    assemblyCode = ""
+    fileName = "tokens.txt"
+    tokens = readFile(sys.argv[1] if len(sys.argv) > 1 else fileName) # Lê os tokens do arquivo (ou usa o nome padrão se não tiver argumento)
 
     assemblyCode = generateAssembly(tokens, assemblyCode)
 
