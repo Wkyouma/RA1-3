@@ -24,29 +24,37 @@ def generateAssembly(tokens, assemblyCode):
         "    vpush {d0}",                 # Devolve para a pilha para não perder o valor
         "    vabs.f64 d0, d0",            # Garante valor positivo para o índice da tabela
         "    vcvt.s32.f64 s0, d0",        # Converte float para inteiro (trunca)
-        "    vmov r2, s0",                # r2 = Parte Inteira
+        "    vmov r2, s0",                # r2 = Parte Inteira completa
         "    vcvt.f64.s32 d1, s0",        # Converte inteiro de volta para float
         "    vsub.f64 d2, d0, d1",        # Subtrai para isolar a fração (ex: 0.2)
         "    ldr r0, =const_10",          # Busca constante 10.0 no .data
         "    vldr d3, [r0]",
         "    vmul.f64 d2, d2, d3",        # d2 = fração * 10
         "    vcvt.s32.f64 s1, d2",        # Converte fração para inteiro
-        "    vmov r3, s1",                # r3 = Parte Decimal
-        "    cmp r2, #9",                 # Trava o dígito inteiro em 9 se for maior
-        "    movgt r2, #9",
-        "    cmp r3, #9",                 # Trava o dígito decimal em 9 se for maior
+        "    vmov r3, s1",                # r3 = 1º dígito decimal
+        "    cmp r3, #9",                 # Trava o dígito decimal em 9
         "    movgt r3, #9",
-        "    LDR R4, =TABELA_HEX",        # Carrega o endereço da tabela de segmentos
-        "    LDRB R5, [R4, r3]",          # r5 = Bits do Decimal (HEX0)
-        "    LDRB R7, [R4, r2]",          # r7 = Bits do Inteiro (HEX2)
-        "    MOV R6, #0x08",              # r6 = Desenho do '_' (HEX1)
-        "    AND R5, R5, #0xFF",          # Limpa o registrador r5
-        "    LSL R6, R6, #8",             # Move o '_' para a posição do HEX1
-        "    ORR R5, R5, R6",             # Junta HEX0 e HEX1
-        "    LSL R7, R7, #16",            # Move o Inteiro para a posição do HEX2
-        "    ORR R5, R5, R7",             # Finaliza a montagem do registrador em r5
-        "    LDR R8, =0xFF200020",        # Endereço do painel HEX no DE1-SoC
-        "    STR R5, [R8]"                # Acende os displays
+        "    movw R6, #0xCCCD",            # R6 = 0xCCCCCCCD (recíproco de 10)
+        "    movt R6, #0xCCCC",
+        "    umull R8, R7, R2, R6",       # R7:R8 = R2 * 0xCCCCCCCD (64 bits)
+        "    LSR R7, R7, #3",             # R7 = R2 / 10 (dezenas)
+        "    mov R6, #10",
+        "    mls R8, R7, R6, R2",         # R8 = R2 - R7*10 (unidades)
+        "    cmp r7, #9",                 # Trava dezenas em 9
+        "    movgt r7, #9",
+        "    ldr r4, =TABELA_HEX",        # Carrega o endereço da tabela de segmentos
+        "    ldrb r5, [r4, r3]",          # R5 = HEX0: dígito decimal
+        "    mov r6, #0x08",              # HEX1 = '_'
+        "    lsl r6, r6, #8",
+        "    orr r5, r5, r6",             # Junta HEX0 e HEX1
+        "    ldrb r6, [r4, r8]",          # HEX2 = unidades inteiro
+        "    lsl r6, r6, #16",
+        "    orr r5, r5, r6",
+        "    ldrb r6, [r4, r7]",          # HEX3 = dezenas inteiro
+        "    lsl r6, r6, #24",
+        "    orr r5, r5, r6",             # R5 = HEX3|HEX2|HEX1|HEX0
+        "    ldr r9, =0xFF200020",        # Endereço do painel HEX no DE1-SoC
+        "    str r5, [r9]",               # Acende os displays
     ]
 
     usedVariables = []
